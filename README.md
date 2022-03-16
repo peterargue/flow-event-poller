@@ -12,8 +12,10 @@ if err != nil {
     log.Fatalf("error creating client pool: %v", err)
 }
 
-sub := poller.NewEventPoller(client, pollingInterval)
-ch := sub.Subscribe(events)
+sub := poller.NewEventPoller(client, 60 * time.Second)
+ch := sub.Subscribe([]string{
+    "A.1654653399040a61.FlowToken.TokensWithdrawn",
+})
 
 go func() {
     for {
