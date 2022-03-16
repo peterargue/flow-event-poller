@@ -5,20 +5,20 @@ and receive a channel on which you can receive your subscribed events.
 ## Usage
 
 ```golang
-ctx, cancel := context.WithCancel(context.Background())
+ctx := context.Background()
 
 client, err := client.New("access.mainnet.nodes.onflow.org:9000", grpc.WithInsecure())
 if err != nil {
-    log.Fatalf("error creating client pool: %v", err)
+	log.Fatalf("error creating client pool: %v", err)
 }
 
-sub := poller.NewEventPoller(client, 60 * time.Second)
+sub := poller.NewEventPoller(client, 60*time.Second)
 ch := sub.Subscribe([]string{
-    "A.1654653399040a61.FlowToken.TokensWithdrawn",
+	"A.1654653399040a61.FlowToken.TokensWithdrawn",
 })
 
 go func() {
-    for {
+	for {
 		select {
 		case <-ctx.Done():
 			return
@@ -29,7 +29,7 @@ go func() {
 }()
 
 if err := sub.Run(ctx); err != nil {
-    log.Fatalf("error running event follower: %v", err)
+	log.Fatalf("error running event follower: %v", err)
 }
 ```
 
