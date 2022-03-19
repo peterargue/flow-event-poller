@@ -1,6 +1,9 @@
 # flow-event-poller
-This is a simple go module for polling the Flow blockchain for events. You provide a list of events and a polling interval,
-and receive a channel on which you can receive your subscribed events.
+This is a simple go module for polling the Flow blockchain for events. You provide a list of events
+and a polling interval, and receive a channel on which you can receive your subscribed events.
+
+If you have a very simple use case, check out the [simple example](cmd/simple/main.go) for how to
+poll for events directly using the flow-go-sdk.
 
 ## Usage
 
