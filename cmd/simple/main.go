@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/onflow/flow-go-sdk"
@@ -31,8 +28,6 @@ type Poller struct {
 }
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	log.Println("Starting up...")
 
 	// create the Access API client
@@ -41,25 +36,17 @@ func main() {
 		log.Fatalf("error creating gRPC client: %v", err)
 	}
 
-	// register shutdown handler
-	go signalHandler(cancel)
-
-	p := &Poller{
-		client:   client,
-		events:   events,
-		interval: pollingInterval,
-	}
+	var lastHeight uint64
+	p := &Poller{client: client}
 
 	// poll for events
-	var lastHeight uint64
 	for {
-		select {
-		case <-ctx.Done():
-			log.Println("Shutting down...")
-			return
-		case <-time.After(p.interval):
-			lastHeight, err = p.checkEvents(ctx, lastHeight)
+		lastHeight, err = p.checkEvents(context.Background(), lastHeight)
+		if err != nil {
+			log.Fatalf("error polling events: %v", err)
 		}
+
+		time.Sleep(pollingInterval)
 	}
 }
 
@@ -70,12 +57,13 @@ func (p *Poller) checkEvents(ctx context.Context, lastHeight uint64) (uint64, er
 		return lastHeight, fmt.Errorf("error getting latest block header: %w", err)
 	}
 
-	// on the first run, return the last block's events
+	// on the first run, just return the last block's height
 	if lastHeight == 0 {
-		lastHeight = header.Height - 1
+		return header.Height, nil
 	}
 
-	for _, event := range p.events {
+	log.Printf("Checking for events from %d to %d", lastHeight+1, header.Height)
+	for _, event := range events {
 		err := p.pollEvent(ctx, lastHeight+1, header.Height, event)
 
 		if err != nil {
@@ -110,14 +98,4 @@ func (p *Poller) pollEvent(ctx context.Context, startHeight uint64, endHeight ui
 // This would contain any event processing logic you need
 func eventHandler(event *flow.Event) {
 	log.Printf("Tx : %s => %s : %s", event.TransactionID, event.Type, event.ID())
-}
-
-// signalHandler listens for SIGINT and SIGTERM and cancels the main context to begin the shutdown
-// process
-func signalHandler(cancel context.CancelFunc) {
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-
-	<-sig
-	cancel()
 }
