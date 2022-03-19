@@ -22,9 +22,7 @@ var events = []string{
 }
 
 type Poller struct {
-	client   *client.Client
-	events   []string
-	interval time.Duration
+	client *client.Client
 }
 
 func main() {
