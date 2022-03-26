@@ -100,7 +100,7 @@ func (p *EventPoller) Run(ctx context.Context) error {
 		return fmt.Errorf("error getting start header: %w", err)
 	}
 
-	next := time.After(0) // start immediately
+	next := time.After(p.interval)
 	for {
 		select {
 		case <-ctx.Done():
