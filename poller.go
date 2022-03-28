@@ -37,6 +37,7 @@ type EventPoller struct {
 	client        *client.Client
 	interval      time.Duration
 	subscriptions map[string][]*Subscription
+	lastHeader    *flow.BlockHeader
 }
 
 type BlockEvent struct {
@@ -93,9 +94,17 @@ func (p *EventPoller) Unsubscribe(id string, events []string) {
 	}
 }
 
+func (p *EventPoller) LastProcessedHeight() uint64 {
+	if p.lastHeader == nil {
+		return 0
+	}
+	return p.lastHeader.Height
+}
+
 // Run runs the event poller
 func (p *EventPoller) Run(ctx context.Context) error {
-	lastest, err := p.startHeader(ctx)
+	var err error
+	p.lastHeader, err = p.startHeader(ctx)
 	if err != nil {
 		return fmt.Errorf("error getting start header: %w", err)
 	}
@@ -111,10 +120,10 @@ func (p *EventPoller) Run(ctx context.Context) error {
 			// every interval plus processing time
 			next = time.After(p.interval)
 
-			newLatest, err := p.checkSubscriptions(ctx, lastest)
+			newLatest, err := p.checkSubscriptions(ctx, p.lastHeader)
 
 			// module is shutting down
-			if errors.Is(err, ctx.Err()) {
+			if err != nil && errors.Is(err, ctx.Err()) {
 				return nil
 			}
 
@@ -131,7 +140,7 @@ func (p *EventPoller) Run(ctx context.Context) error {
 				continue
 			}
 
-			lastest = newLatest
+			p.lastHeader = newLatest
 		}
 	}
 }
@@ -149,6 +158,11 @@ func (p *EventPoller) checkSubscriptions(ctx context.Context, lastHeader *flow.B
 
 	if err != nil {
 		return nil, fmt.Errorf("error getting latest header: %w", err)
+	}
+
+	// nothing to do
+	if lastHeader.Height >= latest.Height {
+		return lastHeader, nil
 	}
 
 	var header *flow.BlockHeader
